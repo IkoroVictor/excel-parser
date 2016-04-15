@@ -163,8 +163,16 @@ public class SheetParser {
                         throw new ExcelInvalidCellValuesException("Invalid cell value at [" + currentLocation + ", " + position + "] in the sheet. This exception can be suppressed by setting 'validationType' in @ExcelField to 'ValidationType.SOFT");
                     }
                 }
+                else
+                {
+                    setFieldValue(field, object, cellValue);
+                }
             }
-            setFieldValue(field, object, cellValue);
+            else
+            {
+                setFieldValue(field, object, cellValue);
+            }
+
         }
 
         return object;
