@@ -9,8 +9,6 @@ import lombok.Value;
 import lombok.experimental.FieldDefaults;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.Date;
 
 @Value
@@ -40,14 +38,9 @@ public class Student {
     @ExcelField(position = 8)
     BigDecimal totalScore;
 
-    @ExcelField(position = 9)
-    LocalDate admissionDate;
-
-    @ExcelField(position = 10)
-    LocalDateTime admissionDateTime;
 
     @SuppressWarnings("UnusedDeclaration")
     private Student() {
-        this(null, null, null, null, null, null, null, null, null);
+        this(null, null, null, null, null, null, null);
     }
 }

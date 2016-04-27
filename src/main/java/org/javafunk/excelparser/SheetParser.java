@@ -7,6 +7,7 @@ import org.javafunk.excelparser.annotations.ParseType;
 import org.javafunk.excelparser.exception.ExcelInvalidCell;
 import org.javafunk.excelparser.exception.ExcelInvalidCellValuesException;
 import org.javafunk.excelparser.exception.ExcelParsingException;
+import org.javafunk.excelparser.exception.ExcelParsingExceptionHandler;
 import org.javafunk.excelparser.helper.HSSFHelper;
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
@@ -16,13 +17,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.OptionalInt;
-import java.util.Set;
-import java.util.function.Consumer;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -35,7 +30,7 @@ public class SheetParser {
         excelInvalidCells = new ArrayList<>();
     }
 
-    public <T> List<T> createEntity(Sheet sheet, Class<T> clazz, Consumer<ExcelParsingException> errorHandler) {
+    public <T> List<T> createEntity(Sheet sheet, Class<T> clazz, ExcelParsingExceptionHandler errorHandler) {
         List<T> list = new ArrayList<>();
         ExcelObject excelObject = getExcelObject(clazz, errorHandler);
         if (excelObject.start() <= 0 || excelObject.end() < 0) {
@@ -75,26 +70,25 @@ public class SheetParser {
      */
     @Deprecated
     public <T> List<T> createEntity(Sheet sheet, String sheetName, Class<T> clazz) {
-        return createEntity(sheet, clazz, error -> {
-            throw error;
-        });
+        return createEntity(sheet, clazz, new ExcelParsingExceptionHandler());
     }
 
     public <T> int getRowOrColumnEnd(Sheet sheet, Class<T> clazz) {
-        ExcelObject excelObject = getExcelObject(clazz, e -> {
-            throw e;
-        });
+        ExcelObject excelObject = getExcelObject(clazz, new ExcelParsingExceptionHandler());
         ParseType parseType = excelObject.parseType();
         if (parseType == ParseType.ROW) {
             return sheet.getLastRowNum() + 1;
         }
 
         Set<Integer> positions = getExcelFieldPositionMap(clazz).keySet();
-        OptionalInt maxPosition = positions.stream().mapToInt((x) -> x).max();
-        OptionalInt minPosition = positions.stream().mapToInt((x) -> x).min();
+        Integer[] positionsArr = new Integer[1];
+        List<Integer> positionsList = Arrays.asList(positions.toArray(positionsArr));
+        Collections.max(positionsList);
+        Integer maxPosition = Collections.max(positionsList);
+        Integer minPosition = Collections.max(positionsList);
 
         int maxCellNumber = 0;
-        for (int i = minPosition.getAsInt(); i < maxPosition.getAsInt(); i++) {
+        for (int i = minPosition; i < maxPosition; i++) {
             int cellsNumber = sheet.getRow(i).getLastCellNum();
             if (maxCellNumber < cellsNumber) {
                 maxCellNumber = cellsNumber;
@@ -126,15 +120,16 @@ public class SheetParser {
         return fieldList;
     }
 
-    private <T> ExcelObject getExcelObject(Class<T> clazz, Consumer<ExcelParsingException> errorHandler) {
+    private <T> ExcelObject getExcelObject(Class<T> clazz, ExcelParsingExceptionHandler errorHandler) {
         ExcelObject excelObject = clazz.getAnnotation(ExcelObject.class);
         if (excelObject == null) {
-            errorHandler.accept(new ExcelParsingException("Invalid class configuration - ExcelObject annotation missing - " + clazz.getSimpleName()));
+            errorHandler.setException(new ExcelParsingException("Invalid class configuration - ExcelObject annotation missing - " + clazz.getSimpleName()));
+            errorHandler.handle();
         }
         return excelObject;
     }
 
-    private <T> T getNewInstance(Sheet sheet, Class<T> clazz, ParseType parseType, Integer currentLocation, boolean zeroIfNull, Consumer<ExcelParsingException> errorHandler) {
+        private <T> T getNewInstance(Sheet sheet, Class<T> clazz, ParseType parseType, Integer currentLocation, boolean zeroIfNull, ExcelParsingExceptionHandler errorHandler) {
         T object = getInstance(clazz, errorHandler);
         Map<Integer, Field> excelPositionMap = getExcelFieldPositionMap(clazz);
         for (Integer position : excelPositionMap.keySet()) {
@@ -178,14 +173,15 @@ public class SheetParser {
         return object;
     }
 
-    private <T> T getInstance(Class<T> clazz, Consumer<ExcelParsingException> errorHandler) {
+    private <T> T getInstance(Class<T> clazz, ExcelParsingExceptionHandler errorHandler) {
         T object;
         try {
             Constructor<T> constructor = clazz.getDeclaredConstructor();
             constructor.setAccessible(true);
             object = constructor.newInstance();
         } catch (Exception e) {
-            errorHandler.accept(new ExcelParsingException("Exception occurred while instantiating the class " + clazz.getName(), e));
+            errorHandler.setException(new ExcelParsingException("Exception occurred while instantiating the class " + clazz.getName(), e));
+            errorHandler.handle();
             return null;
         }
         return object;

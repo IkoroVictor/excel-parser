@@ -6,22 +6,18 @@ import org.apache.poi.hssf.usermodel.HSSFDateUtil;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
+import org.javafunk.excelparser.exception.ExcelParsingExceptionHandler;
 
 import java.math.BigDecimal;
 import java.text.DecimalFormat;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.Date;
-import java.util.function.Consumer;
 
 import static java.text.MessageFormat.format;
 
 public class HSSFHelper {
 
     @SuppressWarnings("unchecked")
-    public static <T> T getCellValue(Sheet sheet, Class<T> type, Integer row, Integer col, boolean zeroIfNull, Consumer<ExcelParsingException> errorHandler) {
+    public static <T> T getCellValue(Sheet sheet, Class<T> type, Integer row, Integer col, boolean zeroIfNull, ExcelParsingExceptionHandler errorHandler) {
         Cell cell = getCell(sheet, row, col);
 
         if (type.equals(String.class)) {
@@ -32,13 +28,6 @@ public class HSSFHelper {
             return cell == null ? null : (T) getDateCell(cell, new Locator(sheet.getSheetName(), row, col), errorHandler);
         }
 
-        if (type.equals(LocalDate.class)) {
-            return cell == null ? null : (T) getLocalDateCell(cell, new Locator(sheet.getSheetName(), row, col), errorHandler);
-        }
-
-        if (type.equals(LocalDateTime.class)) {
-            return cell == null ? null : (T) getLocalDateTimeCell(cell, new Locator(sheet.getSheetName(), row, col), errorHandler);
-        }
 
         if (type.equals(Integer.class)) {
             return (T) getIntegerCell(cell, zeroIfNull, new Locator(sheet.getSheetName(), row, col), errorHandler);
@@ -56,42 +45,13 @@ public class HSSFHelper {
             return (T) getBigDecimalCell(cell, zeroIfNull, new Locator(sheet.getSheetName(), row, col), errorHandler);
         }
 
-        errorHandler.accept(new ExcelParsingException(format("{0} data type not supported for parsing", type.getName())));
+        errorHandler.setException(new ExcelParsingException(format("{0} data type not supported for parsing", type.getName())));
+        errorHandler.handle();
         return null;
     }
 
-    private static LocalDate getLocalDateCell(Cell cell, Locator locator, Consumer<ExcelParsingException> errorHandler) {
-        try {
-            if (!HSSFDateUtil.isCellDateFormatted(cell)) {
-                errorHandler.accept(new ExcelParsingException(format("Invalid date found in sheet {0} at row {1}, column {2}", locator.getSheetName(), locator.getRow(), locator.getCol())));
-            }
 
-            Instant instant = Instant.ofEpochMilli(HSSFDateUtil.getJavaDate(cell.getNumericCellValue()).getTime());
-            LocalDateTime res = LocalDateTime.ofInstant(instant, ZoneId.systemDefault());
-            return res.toLocalDate();
-
-        } catch (IllegalStateException illegalStateException) {
-            errorHandler.accept(new ExcelParsingException(format("Invalid date found in sheet {0} at row {1}, column {2}", locator.getSheetName(), locator.getRow(), locator.getCol())));
-        }
-        return null;
-    }
-
-    private static LocalDateTime getLocalDateTimeCell(Cell cell, Locator locator, Consumer<ExcelParsingException> errorHandler) {
-        try {
-            if (!HSSFDateUtil.isCellDateFormatted(cell)) {
-                errorHandler.accept(new ExcelParsingException(format("Invalid date found in sheet {0} at row {1}, column {2}", locator.getSheetName(), locator.getRow(), locator.getCol())));
-            }
-
-            Instant instant = Instant.ofEpochMilli(HSSFDateUtil.getJavaDate(cell.getNumericCellValue()).getTime());
-            return LocalDateTime.ofInstant(instant, ZoneId.systemDefault());
-
-        } catch (IllegalStateException illegalStateException) {
-            errorHandler.accept(new ExcelParsingException(format("Invalid date found in sheet {0} at row {1}, column {2}", locator.getSheetName(), locator.getRow(), locator.getCol())));
-        }
-        return null;
-    }
-
-    private static BigDecimal getBigDecimalCell(Cell cell, boolean zeroIfNull, Locator locator, Consumer<ExcelParsingException> errorHandler) {
+    private static BigDecimal getBigDecimalCell(Cell cell, boolean zeroIfNull, Locator locator, ExcelParsingExceptionHandler errorHandler) {
         String val = getStringCell(cell, errorHandler);
         if(val == null || val.trim().equals("")) {
             if(zeroIfNull) {
@@ -102,7 +62,8 @@ public class HSSFHelper {
         try {
             return new BigDecimal(val);
         } catch (NumberFormatException e) {
-            errorHandler.accept(new ExcelParsingException(format("Invalid number found in sheet {0} at row {1}, column {2}", locator.getSheetName(), locator.getRow(), locator.getCol())));
+            errorHandler.setException(new ExcelParsingException(format("Invalid number found in sheet {0} at row {1}, column {2}", locator.getSheetName(), locator.getRow(), locator.getCol())));
+            errorHandler.handle();
         }
 
         if (zeroIfNull) {
@@ -116,7 +77,7 @@ public class HSSFHelper {
         return row == null ? null : row.getCell(columnNumber - 1);
     }
 
-    static String getStringCell(Cell cell, Consumer<ExcelParsingException> errorHandler) {
+    static String getStringCell(Cell cell, ExcelParsingExceptionHandler errorHandler) {
         if (cell == null) {
             return null;
         }
@@ -149,19 +110,21 @@ public class HSSFHelper {
         return df.format(cell.getNumericCellValue());
     }
 
-    static Date getDateCell(Cell cell, Locator locator, Consumer<ExcelParsingException> errorHandler) {
+    static Date getDateCell(Cell cell, Locator locator, ExcelParsingExceptionHandler errorHandler) {
         try {
             if (!HSSFDateUtil.isCellDateFormatted(cell)) {
-                errorHandler.accept(new ExcelParsingException(format("Invalid date found in sheet {0} at row {1}, column {2}", locator.getSheetName(), locator.getRow(), locator.getCol())));
+                errorHandler.setException(new ExcelParsingException(format("Invalid date found in sheet {0} at row {1}, column {2}", locator.getSheetName(), locator.getRow(), locator.getCol())));
+                errorHandler.handle();
             }
             return HSSFDateUtil.getJavaDate(cell.getNumericCellValue());
         } catch (IllegalStateException illegalStateException) {
-            errorHandler.accept(new ExcelParsingException(format("Invalid date found in sheet {0} at row {1}, column {2}", locator.getSheetName(), locator.getRow(), locator.getCol())));
+            errorHandler.setException(new ExcelParsingException(format("Invalid date found in sheet {0} at row {1}, column {2}", locator.getSheetName(), locator.getRow(), locator.getCol())));
+            errorHandler.handle();
         }
         return null;
     }
 
-    static Double getDoubleCell(Cell cell, boolean zeroIfNull, Locator locator, Consumer<ExcelParsingException> errorHandler) {
+    static Double getDoubleCell(Cell cell, boolean zeroIfNull, Locator locator, ExcelParsingExceptionHandler errorHandler) {
         if (cell == null) {
             return zeroIfNull ? 0d : null;
         }
@@ -174,24 +137,26 @@ public class HSSFHelper {
             return zeroIfNull ? 0d : null;
         }
 
-        errorHandler.accept(new ExcelParsingException(format("Invalid number found in sheet {0} at row {1}, column {2}", locator.getSheetName(), locator.getRow(), locator.getCol())));
+        errorHandler.setException(new ExcelParsingException(format("Invalid number found in sheet {0} at row {1}, column {2}", locator.getSheetName(), locator.getRow(), locator.getCol())));
+        errorHandler.handle();
         return null;
     }
 
-    static Long getLongCell(Cell cell, boolean zeroIfNull, Locator locator, Consumer<ExcelParsingException> errorHandler) {
+    static Long getLongCell(Cell cell, boolean zeroIfNull, Locator locator, ExcelParsingExceptionHandler errorHandler) {
         Double doubleValue = getNumberWithoutDecimals(cell, zeroIfNull, locator, errorHandler);
         return doubleValue == null ? null : doubleValue.longValue();
     }
 
-    static Integer getIntegerCell(Cell cell, boolean zeroIfNull, Locator locator, Consumer<ExcelParsingException> errorHandler) {
+    static Integer getIntegerCell(Cell cell, boolean zeroIfNull, Locator locator, ExcelParsingExceptionHandler errorHandler) {
         Double doubleValue = getNumberWithoutDecimals(cell, zeroIfNull, locator, errorHandler);
         return doubleValue == null ? null : doubleValue.intValue();
     }
 
-    private static Double getNumberWithoutDecimals(Cell cell, boolean zeroIfNull, Locator locator, Consumer<ExcelParsingException> errorHandler) {
+    private static Double getNumberWithoutDecimals(Cell cell, boolean zeroIfNull, Locator locator, ExcelParsingExceptionHandler errorHandler) {
         Double doubleValue = getDoubleCell(cell, zeroIfNull, locator, errorHandler);
         if (doubleValue != null && doubleValue % 1 != 0) {
-            errorHandler.accept(new ExcelParsingException(format("Invalid number found in sheet {0} at row {1}, column {2}", locator.getSheetName(), locator.getRow(), locator.getCol())));
+            errorHandler.setException(new ExcelParsingException(format("Invalid number found in sheet {0} at row {1}, column {2}", locator.getSheetName(), locator.getRow(), locator.getCol())));
+            errorHandler.handle();
         }
         return doubleValue;
     }

@@ -4,6 +4,7 @@ import org.javafunk.excelparser.exception.ExcelParsingException;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Sheet;
+import org.javafunk.excelparser.exception.ExcelParsingExceptionHandler;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -11,7 +12,6 @@ import org.junit.Test;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Date;
-import java.util.function.Consumer;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
@@ -39,9 +39,7 @@ public class HSSFHelperTest {
         int rowNumber = 2;
         int columnNumber = 2;
         Cell cell = HSSFHelper.getCell(sheet, rowNumber, columnNumber);
-        HSSFHelper.getDateCell(cell, new Locator(sheetName, rowNumber, columnNumber), e -> {
-            throw e;
-        });
+        HSSFHelper.getDateCell(cell, new Locator(sheetName, rowNumber, columnNumber), new ExcelParsingExceptionHandler());
     }
 
     @Test
@@ -49,18 +47,14 @@ public class HSSFHelperTest {
         int rowNumber = 6;
         int columnNumber = 4;
         Cell cell = HSSFHelper.getCell(sheet, rowNumber, columnNumber);
-        Date actual = HSSFHelper.getDateCell(cell, new Locator(sheetName, rowNumber, columnNumber), e -> {
-            throw e;
-        });
+        Date actual = HSSFHelper.getDateCell(cell, new Locator(sheetName, rowNumber, columnNumber), new ExcelParsingExceptionHandler());
 
         assertThat(actual, is(not(nullValue(Date.class))));
     }
 
     @Test
     public void testShouldReturnValidStringValue() {
-        Consumer<ExcelParsingException> errorHandler = e -> {
-            throw e;
-        };
+        ExcelParsingExceptionHandler errorHandler = new ExcelParsingExceptionHandler();
         assertThat(HSSFHelper.getStringCell(HSSFHelper.getCell(sheet, 6, 1), errorHandler), is("1"));
         assertThat(HSSFHelper.getStringCell(HSSFHelper.getCell(sheet, 6, 5), errorHandler), is("A"));
         assertThat(HSSFHelper.getStringCell(HSSFHelper.getCell(sheet, 8, 3), errorHandler), is("James"));
@@ -68,16 +62,17 @@ public class HSSFHelperTest {
 
     @Test
     public void testShouldReturnValidNumericValue() {
-        assertThat(HSSFHelper.getIntegerCell(HSSFHelper.getCell(sheet, 6, 1), false, new Locator(sheetName, 6, 1), e -> { throw e; }), is(1));
-        assertThat(HSSFHelper.getIntegerCell(HSSFHelper.getCell(sheet, 6, 8), true, new Locator(sheetName, 6, 8),e -> { throw e; }), is(0));
-        assertThat(HSSFHelper.getIntegerCell(HSSFHelper.getCell(sheet, 6, 8), false, new Locator(sheetName, 6, 8), e -> { throw e; }), is(nullValue()));
+        ExcelParsingExceptionHandler errorHandler = new ExcelParsingExceptionHandler();
+        assertThat(HSSFHelper.getIntegerCell(HSSFHelper.getCell(sheet, 6, 1), false, new Locator(sheetName, 6, 1), errorHandler), is(1));
+        assertThat(HSSFHelper.getIntegerCell(HSSFHelper.getCell(sheet, 6, 8), true, new Locator(sheetName, 6, 8),errorHandler), is(0));
+        assertThat(HSSFHelper.getIntegerCell(HSSFHelper.getCell(sheet, 6, 8), false, new Locator(sheetName, 6, 8), errorHandler), is(nullValue()));
 
-        assertThat(HSSFHelper.getLongCell(HSSFHelper.getCell(sheet, 6, 2), false, new Locator(sheetName, 6, 2), e -> { throw e; }), is(2001L));
-        assertThat(HSSFHelper.getLongCell(HSSFHelper.getCell(sheet, 10, 2), true, new Locator(sheetName, 10, 2), e -> { throw e; }), is(0L));
-        assertThat(HSSFHelper.getLongCell(HSSFHelper.getCell(sheet, 10, 2), false, new Locator(sheetName, 10, 2), e -> { throw e; }), is(nullValue(Long.class)));
+        assertThat(HSSFHelper.getLongCell(HSSFHelper.getCell(sheet, 6, 2), false, new Locator(sheetName, 6, 2),errorHandler), is(2001L));
+        assertThat(HSSFHelper.getLongCell(HSSFHelper.getCell(sheet, 10, 2), true, new Locator(sheetName, 10, 2), errorHandler), is(0L));
+        assertThat(HSSFHelper.getLongCell(HSSFHelper.getCell(sheet, 10, 2), false, new Locator(sheetName, 10, 2), errorHandler), is(nullValue(Long.class)));
 
-        assertThat(HSSFHelper.getDoubleCell(HSSFHelper.getCell(sheet, 7, 8), false, new Locator(sheetName, 7, 8), e -> { throw e; }), is(450.3d));
-        assertThat(HSSFHelper.getDoubleCell(HSSFHelper.getCell(sheet, 8, 8), false, new Locator(sheetName, 8, 8), e -> { throw e; }), is(300d));
+        assertThat(HSSFHelper.getDoubleCell(HSSFHelper.getCell(sheet, 7, 8), false, new Locator(sheetName, 7, 8),errorHandler), is(450.3d));
+        assertThat(HSSFHelper.getDoubleCell(HSSFHelper.getCell(sheet, 8, 8), false, new Locator(sheetName, 8, 8),errorHandler), is(300d));
     }
 
 }

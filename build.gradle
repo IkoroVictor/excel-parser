@@ -6,9 +6,9 @@ apply plugin: 'maven'
 apply plugin: 'signing'
 apply plugin: 'nexus-workflow'
 
-version = '1.0.1'
+version = '0.1'
 project.group = 'org.javafunk'
-archivesBaseName = "excel-parser"
+archivesBaseName = "excel-parser2"
 
 buildscript {
     repositories {
@@ -31,9 +31,9 @@ dependencies {
     testCompile 'org.testng:testng:6.8.1'
 }
 
-signing {
-    sign configurations.archives
-}
+//signing {
+  //  sign configurations.archives
+//}
 
 jar {
     manifest {
@@ -68,30 +68,26 @@ uploadArchives {
         }
 
         mavenDeployer {
-            beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+           // beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
 
-            repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
-                authentication(
-                        userName: project.property("oss-releases.username"),
-                        password: project.property("oss-releases.password"))
+            repository(url: "http://172.25.20.24:7111/archiva/repository/internal/") {
+
+            }
+            repository(url: "http://172.25.20.29/repository/internal/") {
+
             }
 
-            snapshotRepository(url: "https://oss.sonatype.org/content/repositories/snapshots/") {
-                authentication(
-                        userName: project.property("oss-releases.username"),
-                        password: project.property("oss-releases.password"))
-            }
 
             pom.project {
                 name 'Excel Parser'
                 packaging 'jar'
                 description 'Annotations for Excel document parsing.'
-                url 'https://github.com/nvenky/excel-parser'
+                url 'https://github.com/IkoroVictor/excel-parser'
 
                 scm {
-                    connection 'scm:git:git://github.com/nvenky/excel-parser/'
-                    developerConnection 'scm:git:git://github.com/nvenky/excel-parser/'
-                    url 'https://github.com/nvenky/excel-parser'
+                    connection 'scm:git:git://github.com/IkoroVictor/excel-parser/'
+                    developerConnection 'scm:git:git://github.com/IkoroVictor/excel-parser/'
+                    url 'https://github.com/IkoroVictor/excel-parser'
                 }
 
                 licenses {
@@ -106,6 +102,11 @@ uploadArchives {
                         id 'nvenky'
                         name 'Venkatesh Nannan'
                         email 'nvenky@gmail.com'
+                    }
+                    developer {
+                        id 'ikorovictor'
+                        name 'Victor Ikoro'
+                        email 'ikoro.victor@gmail.com'
                     }
                 }
             }
